@@ -1,0 +1,111 @@
+import java.io.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Scanner;
+
+public class DictionaryApp {
+    // Tên file dùng để lưu trữ dữ liệu vĩnh viễn
+    private static final String DB_FILE = "dictionary.txt";
+    // Sử dụng HashMap để lưu trữ từ điển trong bộ nhớ RAM khi chương trình chạy
+    private static final Map<String, String> dictionary = new HashMap<>();
+
+    public static void main(String[] args) {
+        // 1. Tải dữ liệu từ file vào HashMap khi khởi động
+        loadDictionary();
+
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("=== PHẦN MỀM TỪ ĐIỂN TAM NGỮ ===");
+        System.out.println("        (ANH-VIỆT-NHẬT)");
+
+        while (true) {
+            System.out.println("\n         --- MENU ---");
+            System.out.println("1. Thêm từ mới (Word, Meaning)");
+            System.out.println("2. Tra từ");
+            System.out.println("3. Thoát (Exit)");
+            System.out.print("Chọn chức năng (1-3): ");
+
+            String choice = scanner.nextLine().trim();
+
+            switch (choice) {
+                case "1":
+                    System.out.print("Nhập từ cần thêm: ");
+                    String word = scanner.nextLine().trim();
+                    if (word.isEmpty()) {
+                        System.out.println("Từ không được để trống!");
+                        break;
+                    }
+
+                    System.out.print("Nhập ý nghĩa của từ '" + word + "': ");
+                    String meaning = scanner.nextLine().trim();
+                    if (meaning.isEmpty()) {
+                        System.out.println("Ý nghĩa không được để trống!");
+                        break;
+                    }
+
+                    // Lưu vào bộ nhớ tạm và ghi đè/thêm vào file vĩnh viễn
+                    dictionary.put(word.toLowerCase(), meaning);
+                    saveWordToFile(word, meaning);
+                    System.out.println("Thành công: Đã lưu từ '" + word + "' vĩnh viễn.");
+                    break;
+
+                case "2":
+                    System.out.print("Nhập từ cần tra: ");
+                    String searchWord = scanner.nextLine().trim();
+                    
+                    // Kiểm tra trong HashMap (không phân biệt chữ hoa/thường)
+                    String result = dictionary.get(searchWord.toLowerCase());
+
+                    if (result != null) {
+                        System.out.println("--> Ý nghĩa của '" + searchWord + "': " + result);
+                    } else {
+                        System.out.println("--> Rất tiếc, từ '" + searchWord + "' chưa có trong từ điển.");
+                    }
+                    break;
+
+                case "3":
+                    System.out.println("Cảm ơn bạn đã sử dụng phần mềm. Tạm biệt!");
+                    scanner.close();
+                    System.exit(0);
+
+                default:
+                    System.out.println("Lựa chọn không hợp lệ! Vui lòng chọn lại từ 1 đến 3.");
+            }
+        }
+    }
+
+    /**
+     * Hàm đọc dữ liệu từ file txt vào HashMap khi chương trình bắt đầu
+     */
+    private static void loadDictionary() {
+        File file = new File(DB_FILE);
+        if (!file.exists()) {
+            return; // Nếu file chưa tồn tại (lần đầu chạy), bỏ qua
+        }
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                // Định dạng file lưu trữ: word|meaning
+                String[] parts = line.split("\\|", 2);
+                if (parts.length == 2) {
+                    dictionary.put(parts[0].toLowerCase(), parts[1]);
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Lỗi khi đọc dữ liệu từ tệp: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Hàm ghi thêm từ mới vào file txt để lưu trữ vĩnh viễn
+     */
+    private static void saveWordToFile(String word, String meaning) {
+        // Tham số 'true' trong FileWriter kích hoạt chế độ Append (ghi thêm vào cuối file)
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(DB_FILE, true))) {
+            writer.write(word.toLowerCase() + "|" + meaning);
+            writer.newLine();
+        } catch (IOException e) {
+            System.out.println("Lỗi khi lưu dữ liệu vào tệp: " + e.getMessage());
+        }
+    }
+}
