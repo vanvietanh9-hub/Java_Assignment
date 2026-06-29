@@ -1,0 +1,165 @@
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Scanner;
+
+public class SmartDictionary {
+    private static final String DB_FILE = "dictionary.txt";
+    
+    // Class quản lý các nghĩa của từ
+    static class Translation {
+        String english;
+        String japanese;
+
+        public Translation(String english, String japanese) {
+            this.english = english;
+            this.japanese = japanese;
+        }
+    }
+
+    // Bộ nhớ RAM lưu trữ từ điển: Key là Tiếng Việt
+    private static Map<String, Translation> dictionary = new HashMap<>();
+
+    public static void main(String[] args) {
+        loadDictionary();
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("=== TỪ ĐIỂN TAM NGỮ THÔNG MINH ===");
+
+        while (true) {
+            System.out.println("\n--- MENU ---");
+            System.out.println("1. Thêm từ mới (Việt -> Anh | Nhật)");
+            System.out.println("2. Tra từ (Tính năng thông minh)");
+            System.out.println("3. Thoát (Exit)");
+            System.out.print("Chọn chức năng (1-3): ");
+
+            String choice = scanner.nextLine().trim();
+
+            switch (choice) {
+                case "1":
+                    System.out.print("Nhập từ tiếng Việt: ");
+                    String word = scanner.nextLine().trim();
+                    if (word.isEmpty()) break;
+
+                    System.out.print("Nhập nghĩa Tiếng Anh: ");
+                    String eng = scanner.nextLine().trim();
+                    
+                    System.out.print("Nhập nghĩa Tiếng Nhật: ");
+                    String jap = scanner.nextLine().trim();
+
+                    dictionary.put(word.toLowerCase(), new Translation(eng, jap));
+                    saveWordToFile(word, eng, jap);
+                    System.out.println("-> Đã lưu vĩnh viễn!");
+                    break;
+
+                case "2":
+                    System.out.print("Nhập từ tiếng Việt cần tra: ");
+                    String searchWord = scanner.nextLine().trim().toLowerCase();
+
+                    if (dictionary.containsKey(searchWord)) {
+                        Translation t = dictionary.get(searchWord);
+                        System.out.println("================================");
+                        System.out.println("-> Tiếng Anh: " + t.english);
+                        System.out.println("-> Tiếng Nhật: " + t.japanese);
+                        System.out.println("================================");
+                    } else {
+                        System.out.println("--> Không tìm thấy từ '" + searchWord + "' trong từ điển.");
+                        // Gọi tính năng WOW: Gợi ý từ gần đúng
+                        suggestSimilarWords(searchWord);
+                    }
+                    break;
+
+                case "3":
+                    System.out.println("Tạm biệt!");
+                    scanner.close();
+                    System.exit(0);
+                    break;
+
+                default:
+                    System.out.println("Lựa chọn không hợp lệ!");
+            }
+        }
+    }
+
+    /**
+     * THUẬT TOÁN WOW: Tìm và gợi ý các từ có khoảng cách sai lệch nhỏ (1 hoặc 2 ký tự)
+     */
+    private static void suggestSimilarWords(String inputWord) {
+        boolean hasSuggestion = false;
+        
+        for (String dictWord : dictionary.keySet()) {
+            int distance = computeLevenshteinDistance(inputWord, dictWord);
+            
+            // Nếu chỉ sai lệch 1 hoặc 2 thao tác ký tự -> Khả năng cao là gõ nhầm
+            if (distance >= 1 && distance <= 2) {
+                if (!hasSuggestion) {
+                    System.out.println("💡 Có phải bạn muốn tìm:");
+                    hasSuggestion = true;
+                }
+                Translation t = dictionary.get(dictWord);
+                System.out.println("   • \"" + dictWord + "\" (Anh: " + t.english + " | Nhật: " + t.japanese + ")");
+            }
+        }
+        
+        if (!hasSuggestion) {
+            System.out.println("💡 Không tìm thấy từ nào có phát âm hoặc ký tự tương tự.");
+        }
+    }
+
+    /**
+     * Hàm tính khoảng cách Levenshtein giữa chuỗi s1 và chuỗi s2
+     */
+    private static int computeLevenshteinDistance(String s1, String s2) {
+        int[][] dp = new int[s1.length() + 1][s2.length() + 1];
+
+        for (int i = 0; i <= s1.length(); i++) dp[i][0] = i;
+        for (int j = 0; j <= s2.length(); j++) dp[0][j] = j;
+
+        for (int i = 1; i <= s1.length(); i++) {
+            for (int j = 1; j <= s2.length(); j++) {
+                if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
+                    dp[i][j] = dp[i - 1][j - 1]; // Ký tự giống nhau, không tốn chi phí
+                } else {
+                    // Ký tự khác nhau, lấy giá trị nhỏ nhất của 3 hành động (Xóa, Thêm, Thay thế) + 1
+                    dp[i][j] = 1 + Math.min(dp[i - 1][j - 1], 
+                                   Math.min(dp[i - 1][j], dp[i][j - 1]));
+                }
+            }
+        }
+        return dp[s1.length()][s2.length()];
+    }
+
+    /**
+     * I/O: Đọc file ép cấu trúc mã hóa UTF-8 để không lỗi font chữ Nhật/Việt
+     */
+    private static void loadDictionary() {
+        File file = new File(DB_FILE);
+        if (!file.exists()) return;
+
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split("\\|", 3);
+                if (parts.length == 3) {
+                    dictionary.put(parts[0].trim().toLowerCase(), new Translation(parts[1].trim(), parts[2].trim()));
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Lỗi đọc file: " + e.getMessage());
+        }
+    }
+
+    /**
+     * I/O: Lưu vĩnh viễn với định dạng word|english|japanese
+     */
+    private static void saveWordToFile(String word, String eng, String jap) {
+        try (BufferedWriter writer = new BufferedWriter(
+                new OutputStreamWriter(new FileOutputStream(DB_FILE, true), StandardCharsets.UTF_8))) {
+            writer.write(word.toLowerCase() + "|" + eng + "|" + jap);
+            writer.newLine();
+        } catch (IOException e) {
+            System.out.println("Lỗi ghi file: " + e.getMessage());
+        }
+    }
+}
