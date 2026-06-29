@@ -1,5 +1,6 @@
 # Java_Assignment
 NÓ PHẢI CÓ 3 THỨ TIẾNG ANH-VIỆT-NHẬT
+- nhỡ tìm từ tiếng anh hay tiếng trung sang thì sao?
 - đọc âm thanh ( nếu có thể )
 - phiên âm
 - từ loại ( nếu có )
